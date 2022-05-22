@@ -44,7 +44,6 @@ public class AccountServiceImp implements AccountService {
         AppRole appRole = appRoleRepository.findByRoleName(roleName);
 
         appUser.getAppRoles().add(appRole);
-
     }
 
     @Override
