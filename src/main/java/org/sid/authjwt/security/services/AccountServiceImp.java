@@ -4,6 +4,7 @@ import org.sid.authjwt.security.entities.AppRole;
 import org.sid.authjwt.security.entities.AppUser;
 import org.sid.authjwt.security.repositories.AppRoleRepository;
 import org.sid.authjwt.security.repositories.AppUserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,13 +18,18 @@ public class AccountServiceImp implements AccountService {
     private AppUserRepository appUserRepository;
     private AppRoleRepository appRoleRepository;
 
-    public AccountServiceImp(AppUserRepository appUserRepository, AppRoleRepository appRoleRepository) {
+    private PasswordEncoder passwordEncoder;
+
+    public AccountServiceImp(AppUserRepository appUserRepository, AppRoleRepository appRoleRepository, PasswordEncoder passwordEncoder) {
         this.appUserRepository = appUserRepository;
         this.appRoleRepository = appRoleRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public AppUser addNewUser(AppUser appUser) {
+        String password = appUser.getPassword();
+        appUser.setPassword(passwordEncoder.encode(password));
         return appUserRepository.save(appUser);
     }
 
