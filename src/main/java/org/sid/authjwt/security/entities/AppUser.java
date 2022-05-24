@@ -17,6 +17,8 @@ public class AppUser {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(unique = true)
     private String username;
     // comment json ignore, il va l'ignore au moment de la serialisation
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
