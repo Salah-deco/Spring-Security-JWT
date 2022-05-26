@@ -6,6 +6,7 @@ import org.sid.authjwt.security.entities.AppUser;
 import org.sid.authjwt.security.services.AccountService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,21 +20,25 @@ public class AccountRestController {
     }
 
     @GetMapping(path =  "/users")
+    @PostAuthorize("hasAuthority('USER')")
     public List<AppUser> appUsers() {
         return accountService.listUsers();
     }
 
     @PostMapping(path = "/user")
+    @PostAuthorize("hasAuthority('ADMIN')")
     public AppUser saveUser(@RequestBody AppUser appUser) {
         return accountService.addNewUser(appUser);
     }
 
     @PostMapping(path = "/role")
+    @PostAuthorize("hasAuthority('ADMIN')")
     public AppRole saveRole(@RequestBody AppRole appRole) {
         return accountService.addNewRole(appRole);
     }
 
     @PostMapping(path = "/addRoleToUser")
+    @PostAuthorize("hasAuthority('ADMIN')")
     public void addRoleToUser(@RequestBody RoleUserForm roleUserForm) {
         accountService.addRoleToUser(roleUserForm.getUsername(), roleUserForm.getRoleName());
     }
