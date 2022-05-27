@@ -4,6 +4,7 @@ import org.sid.authjwt.security.entities.AppUser;
 import org.sid.authjwt.security.filters.JwtAuthenticationFilter;
 import org.sid.authjwt.security.filters.JwtAuthorizationFilter;
 import org.sid.authjwt.security.services.AccountService;
+import org.sid.authjwt.security.services.UserDetailsServiceImp;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,26 +29,17 @@ import java.util.Collection;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
-    @Autowired
-    private AccountService accountService;
+    private UserDetailsServiceImp userDetailsServiceImp;
+
+    public SecurityConfig(UserDetailsServiceImp userDetailsServiceImp) {
+        this.userDetailsServiceImp = userDetailsServiceImp;
+    }
 
     // specifiques qui sont les utilisateurs qui ont le droit d'acceder
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        // utiliser c'est methode pour le chercher l'utilisateur a partir de d'une couche service
-        auth.userDetailsService(new UserDetailsService() {
-            @Override
-            public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-                AppUser appUser = accountService.loadUserByUsername(username);
-
-                Collection<GrantedAuthority> authorities = new ArrayList<>();
-                appUser.getAppRoles().forEach(role -> {
-                    authorities.add(new SimpleGrantedAuthority(role.getRoleName()));
-                });
-                // public User(String username, String password, Collection<? extends GrantedAuthority > authorities)
-                return new User(appUser.getUsername(), appUser.getPassword(), authorities);
-            }
-        });
+        // utiliser c'est methode pour la recherche utilisateur a partir de d'une couche service
+        auth.userDetailsService(userDetailsServiceImp);
     }
 
     // specifier les droits d'acces
@@ -60,7 +52,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         // H2 utilise les frames
         // http.formLogin(); // contient un utilisateur qui tentent d'acceder a une ressource dont
         // il n'a pas le droit, affiche le formulaire d'authentication
-        http.authorizeRequests().antMatchers("/h2-console/**").permitAll();
+        http.authorizeRequests().antMatchers("/h2-console/**", "/refreshToken/**", "/login/**").permitAll();
 //        http.authorizeRequests().antMatchers("/login").permitAll();
         // premier solution
         http.authorizeRequests().antMatchers(HttpMethod.POST,"/user/**").hasAnyAuthority("ADMIN");

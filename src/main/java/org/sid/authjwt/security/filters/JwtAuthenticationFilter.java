@@ -3,6 +3,7 @@ package org.sid.authjwt.security.filters;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.sid.authjwt.security.JWTUtil;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -46,7 +47,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         User user = (User) authResult.getPrincipal();
         // apres ajouter de dependance auth0 jwt
         // algorithme pour genere signature HMAC256 = symetrique
-        Algorithm algorithm = Algorithm.HMAC256("mySecret@key");
+        Algorithm algorithm = Algorithm.HMAC256(JWTUtil.SECRET);
         // create JWT token with claims (Subject, Expiration(20min), )
         // =======================================================================
         //  The "iss" (issuer) claim identifies the principal that issued the
@@ -57,12 +58,12 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         // .withClaim(name, values) == to private claims
         String jwtAccessToken = JWT.create()
                 .withSubject(user.getUsername())
-                .withExpiresAt(new Date(System.currentTimeMillis() + 1*60*1000))
+                .withExpiresAt(new Date(System.currentTimeMillis() + JWTUtil.EXPIRE_ACCESS_TOKEN))
                 .withIssuer(request.getRequestURL().toString())
                 .withClaim("roles", user.getAuthorities().stream().map(ga -> ga.getAuthority()).collect(Collectors.toList()))
                 .sign(algorithm);
 
-        response.setHeader("Authorization", jwtAccessToken);
+        response.setHeader(JWTUtil.AUTH_HEADER, jwtAccessToken);
 
         // JWT il presente un probleme concernant la revocation de token
         // ex: si je vous donnee un jwt qui valable pendant 1 mois simplement je peux pas demain vous empecher d'acceder a l'application
@@ -70,7 +71,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         // solution utilise 2 token accessToken, refreshToken
         String jwtRefreshToken = JWT.create()
                 .withSubject(user.getUsername())
-                .withExpiresAt(new Date(System.currentTimeMillis() + 60*60*1000))
+                .withExpiresAt(new Date(System.currentTimeMillis() + JWTUtil.EXPIRE_REFRESH_TOKEN))
                 .withIssuer(request.getRequestURL().toString())
                 .sign(algorithm);
 

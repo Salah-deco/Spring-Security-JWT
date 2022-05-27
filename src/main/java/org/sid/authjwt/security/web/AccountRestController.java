@@ -1,5 +1,11 @@
 package org.sid.authjwt.security.web;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.sid.authjwt.security.JWTUtil;
 import org.sid.authjwt.security.RequestBodyClasses.RoleUserForm;
 import org.sid.authjwt.security.entities.AppRole;
 import org.sid.authjwt.security.entities.AppUser;
@@ -7,9 +13,17 @@ import org.sid.authjwt.security.services.AccountService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PostAuthorize;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.security.Principal;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 public class AccountRestController {
@@ -43,6 +57,44 @@ public class AccountRestController {
         accountService.addRoleToUser(roleUserForm.getUsername(), roleUserForm.getRoleName());
     }
 
+    @GetMapping(path = "/refreshToken")
+    public void refreshToken(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        String authToken = request.getHeader(JWTUtil.AUTH_HEADER);
+        if (authToken != null && authToken.startsWith(JWTUtil.PREFIX)) {
+            try {
+                String jwt = authToken.substring(7); // ignore Bearer
+                Algorithm algorithm = Algorithm.HMAC256(JWTUtil.SECRET);
+                JWTVerifier jwtVerifier = JWT.require(algorithm).build();
+                DecodedJWT decodedJWT = jwtVerifier.verify(jwt);
+                String username = decodedJWT.getSubject();
+
+                AppUser appUser = accountService.loadUserByUsername(username);
+                String jwtAccessToken = JWT.create()
+                        .withSubject(appUser.getUsername())
+                        .withExpiresAt(new Date(System.currentTimeMillis() + JWTUtil.EXPIRE_ACCESS_TOKEN))
+                        .withIssuer(request.getRequestURL().toString())
+                        .withClaim("roles", appUser.getAppRoles().stream().map(role -> role.getRoleName()).collect(Collectors.toList()))
+                        .sign(algorithm);
+
+                Map<String, String> idToken = new HashMap<>();
+                idToken.put("access-token", jwtAccessToken);
+                idToken.put("refresh-token", jwt);
+
+                // utiliser Jackson new ObjectMapper pour serialise un object format JSON
+                response.setContentType("application/json");
+                new ObjectMapper().writeValue(response.getOutputStream(), idToken);
+
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+                throw e;
+//                response.setHeader("error-message", e.getMessage());
+//                response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            }
+        } else {
+            throw new RuntimeException("Refresh token required!!");
+        }
+    }
+
 //    @PostMapping(path = "/addRoleToUser")
 //    public ResponseEntity<?> addRoleToUser(@RequestBody RoleUserForm roleUserForm) {
 //        try {
@@ -57,5 +109,10 @@ public class AccountRestController {
     @GetMapping(path = "/user/{username}")
     public AppUser getUser(@PathVariable String username) {
         return accountService.loadUserByUsername(username);
+    }
+
+    @GetMapping(path = "/profile")
+    public AppUser profile(Principal principal) {
+        return accountService.loadUserByUsername(principal.getName());
     }
 }
